@@ -281,7 +281,9 @@ export default function StandardDeviationCalculator() {
     key: "value" | "frequency"
   ) => {
     if (data.length === 0) return [0, 1];
-    const maxValue = Math.max(...data.map((item) => item[key]));
+    const maxValue = Math.max(
+      ...data.map((item) => (item as Record<string, number>)[key])
+    );
     return [0, maxValue * (200 / zoomLevel)];
   };
 
