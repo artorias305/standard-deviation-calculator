@@ -37,9 +37,31 @@ import {
   Download,
   BarChart as BarChartIcon,
   LineChart,
+  ZoomIn,
+  ZoomOut,
+  Edit,
+  Moon,
+  Sun,
+  GripVertical,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useTheme } from "next-themes";
 
 type DataPoint = {
   index: number;
@@ -63,8 +85,12 @@ export default function StandardDeviationCalculator() {
   const [chartData, setChartData] = useState<DataPoint[]>([]);
   const [histogramData, setHistogramData] = useState<HistogramBin[]>([]);
   const [activeTab, setActiveTab] = useState<string>("bar");
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setTheme, theme } = useTheme();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -86,6 +112,15 @@ export default function StandardDeviationCalculator() {
     setNumbers(newNumbers);
     updateChartData(newNumbers);
     resetResults();
+  };
+
+  const editNumber = (index: number, newValue: number) => {
+    const newNumbers = [...numbers];
+    newNumbers[index] = newValue;
+    setNumbers(newNumbers);
+    updateChartData(newNumbers);
+    resetResults();
+    setEditingIndex(null);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -237,13 +272,51 @@ export default function StandardDeviationCalculator() {
     URL.revokeObjectURL(url);
   };
 
+  const handleZoomChange = (newZoomLevel: number[]) => {
+    setZoomLevel(newZoomLevel[0]);
+  };
+
+  const getYAxisDomain = (
+    data: DataPoint[] | HistogramBin[],
+    key: "value" | "frequency"
+  ) => {
+    if (data.length === 0) return [0, 1];
+    const maxValue = Math.max(...data.map((item) => item[key]));
+    return [0, maxValue * (200 / zoomLevel)];
+  };
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const newNumbers = Array.from(numbers);
+    const [reorderedItem] = newNumbers.splice(result.source.index, 1);
+    newNumbers.splice(result.destination.index, 0, reorderedItem);
+
+    setNumbers(newNumbers);
+    updateChartData(newNumbers);
+    resetResults();
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-3xl font-bold text-center">
-          Standard Deviation Calculator
-        </CardTitle>
-        <CardDescription className="text-center text-lg">
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-3xl font-bold">
+            Standard Deviation Calculator
+          </CardTitle>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {theme === "light" ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+        <CardDescription className="text-lg">
           Enter numbers, visualize data, and calculate statistics
         </CardDescription>
       </CardHeader>
@@ -320,27 +393,102 @@ export default function StandardDeviationCalculator() {
           </TooltipProvider>
         </div>
 
-        <div className="bg-secondary p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Entered Numbers:</h3>
-          <div className="flex flex-wrap gap-2">
-            {numbers.map((num, index) => (
-              <div
-                key={index}
-                className="flex items-center bg-primary text-primary-foreground rounded-full px-3 py-1"
-              >
-                <span className="mr-2">{num}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 rounded-full"
-                  onClick={() => deleteNumber(index)}
+        <div className="border rounded-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Entered Numbers:</h3>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="numbers">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
                 >
-                  <X className="h-3 w-3" />
-                  <span className="sr-only">Delete</span>
-                </Button>
-              </div>
-            ))}
-          </div>
+                  {numbers.map((num, index) => (
+                    <Draggable
+                      key={index}
+                      draggableId={`number-${index}`}
+                      index={index}
+                    >
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="flex items-center justify-between bg-card hover:bg-accent transition-colors rounded-md px-3 py-2 border"
+                        >
+                          <span className="font-medium">{num}</span>
+                          <div className="flex space-x-1">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 hover:bg-accent"
+                                  onClick={() => {
+                                    setEditingIndex(index);
+                                    setEditingValue(num.toString());
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                  <span className="sr-only">Edit</span>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Number</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label
+                                      htmlFor="edit-number"
+                                      className="text-right"
+                                    >
+                                      Number
+                                    </Label>
+                                    <Input
+                                      id="edit-number"
+                                      type="number"
+                                      value={editingValue}
+                                      onChange={(e) =>
+                                        setEditingValue(e.target.value)
+                                      }
+                                      className="col-span-3"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end">
+                                  <Button
+                                    onClick={() => {
+                                      const newValue = parseFloat(editingValue);
+                                      if (!isNaN(newValue)) {
+                                        editNumber(index, newValue);
+                                      }
+                                    }}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 hover:bg-accent"
+                              onClick={() => deleteNumber(index)}
+                            >
+                              <X className="h-3 w-3" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
 
         <TooltipProvider>
@@ -386,6 +534,22 @@ export default function StandardDeviationCalculator() {
             </div>
           )}
 
+        <div className="flex items-center space-x-2">
+          <ZoomOut className="h-4 w-4" />
+          <Slider
+            value={[zoomLevel]}
+            onValueChange={handleZoomChange}
+            min={10}
+            max={200}
+            step={10}
+            className="flex-grow"
+          />
+          <ZoomIn className="h-4 w-4" />
+          <span className="text-sm font-medium w-12 text-right">
+            {zoomLevel}%
+          </span>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="bar">
@@ -414,7 +578,7 @@ export default function StandardDeviationCalculator() {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="index" />
-                  <YAxis />
+                  <YAxis domain={getYAxisDomain(chartData, "value")} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-value)" />
                   {mean !== null && (
@@ -467,6 +631,7 @@ export default function StandardDeviationCalculator() {
                       angle: -90,
                       position: "insideLeft",
                     }}
+                    domain={getYAxisDomain(histogramData, "frequency")}
                   />
                   <ChartTooltip
                     content={({ active, payload }) => {
