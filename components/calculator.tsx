@@ -43,6 +43,10 @@ import {
   Moon,
   Sun,
   GripVertical,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
@@ -76,6 +80,7 @@ type HistogramBin = {
 
 export default function StandardDeviationCalculator() {
   const [numbers, setNumbers] = useState<number[]>([]);
+  const [originalNumbers, setOriginalNumbers] = useState<number[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [result, setResult] = useState<number | null>(null);
   const [mean, setMean] = useState<number | null>(null);
@@ -101,6 +106,7 @@ export default function StandardDeviationCalculator() {
     if (!isNaN(num) && isFinite(num)) {
       const newNumbers = [...numbers, num];
       setNumbers(newNumbers);
+      setOriginalNumbers(newNumbers);
       setInputValue("");
       inputRef.current?.focus();
       updateChartData(newNumbers);
@@ -110,6 +116,7 @@ export default function StandardDeviationCalculator() {
   const deleteNumber = (index: number) => {
     const newNumbers = numbers.filter((_, i) => i !== index);
     setNumbers(newNumbers);
+    setOriginalNumbers(newNumbers);
     updateChartData(newNumbers);
     resetResults();
   };
@@ -118,6 +125,7 @@ export default function StandardDeviationCalculator() {
     const newNumbers = [...numbers];
     newNumbers[index] = newValue;
     setNumbers(newNumbers);
+    setOriginalNumbers(newNumbers);
     updateChartData(newNumbers);
     resetResults();
     setEditingIndex(null);
@@ -254,6 +262,7 @@ export default function StandardDeviationCalculator() {
           .map(Number)
           .filter((num) => !isNaN(num));
         setNumbers(importedNumbers);
+        setOriginalNumbers(importedNumbers);
         updateChartData(importedNumbers);
         resetResults();
       };
@@ -281,9 +290,7 @@ export default function StandardDeviationCalculator() {
     key: "value" | "frequency"
   ) => {
     if (data.length === 0) return [0, 1];
-    const maxValue = Math.max(
-      ...data.map((item) => (item as Record<string, number>)[key])
-    );
+    const maxValue = Math.max(...data.map((item) => item[key]));
     return [0, maxValue * (200 / zoomLevel)];
   };
 
@@ -295,12 +302,41 @@ export default function StandardDeviationCalculator() {
     newNumbers.splice(result.destination.index, 0, reorderedItem);
 
     setNumbers(newNumbers);
+    setOriginalNumbers(newNumbers);
     updateChartData(newNumbers);
     resetResults();
   };
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  const sortAscending = () => {
+    const sortedNumbers = [...numbers].sort((a, b) => a - b);
+    setNumbers(sortedNumbers);
+    updateChartData(sortedNumbers);
+    resetResults();
+  };
+
+  const sortDescending = () => {
+    const sortedNumbers = [...numbers].sort((a, b) => b - a);
+    setNumbers(sortedNumbers);
+    updateChartData(sortedNumbers);
+    resetResults();
+  };
+
+  const resetOrder = () => {
+    setNumbers([...originalNumbers]);
+    updateChartData(originalNumbers);
+    resetResults();
+  };
+
+  const clearAllValues = () => {
+    setNumbers([]);
+    setOriginalNumbers([]);
+    setInputValue("");
+    updateChartData([]);
+    resetResults();
   };
 
   return (
@@ -395,8 +431,72 @@ export default function StandardDeviationCalculator() {
           </TooltipProvider>
         </div>
 
-        <div className="border rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-4">Entered Numbers:</h3>
+        <div className="border rounded-lg p-4 bg-background">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Entered Numbers:</h3>
+            <div className="flex space-x-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={sortAscending} size="sm" variant="outline">
+                      <ArrowUp className="h-4 w-4" />
+                      <span className="sr-only">Sort Ascending</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sort Ascending</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={sortDescending}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      <span className="sr-only">Sort Descending</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sort Descending</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={resetOrder} size="sm" variant="outline">
+                      <RotateCcw className="h-4 w-4" />
+                      <span className="sr-only">Reset Order</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Reset to Original Order</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={clearAllValues}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Clear All</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Clear All Values</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="numbers">
               {(provided) => (
@@ -553,7 +653,7 @@ export default function StandardDeviationCalculator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 bg-background">
             <TabsTrigger value="bar">
               <BarChartIcon className="mr-2 h-4 w-4" />
               Bar Chart
