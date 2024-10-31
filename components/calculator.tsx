@@ -96,6 +96,11 @@ export default function StandardDeviationCalculator() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -288,9 +293,20 @@ export default function StandardDeviationCalculator() {
   const getYAxisDomain = (
     data: DataPoint[] | HistogramBin[],
     key: "value" | "frequency"
-  ) => {
+  ): [number, number] => {
     if (data.length === 0) return [0, 1];
-    const maxValue = Math.max(...data.map((item) => item[key]));
+
+    const maxValue = Math.max(
+      ...data.map((item) => {
+        if (key === "value" && "value" in item) {
+          return item.value;
+        } else if (key === "frequency" && "frequency" in item) {
+          return item.frequency;
+        }
+        return 0;
+      })
+    );
+
     return [0, maxValue * (200 / zoomLevel)];
   };
 
@@ -346,13 +362,15 @@ export default function StandardDeviationCalculator() {
           <CardTitle className="text-3xl font-bold">
             Standard Deviation Calculator
           </CardTitle>
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
+          {mounted && (
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {theme === "light" ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
+            </Button>
+          )}
         </div>
         <CardDescription className="text-lg">
           Enter numbers, visualize data, and calculate statistics
@@ -431,167 +449,174 @@ export default function StandardDeviationCalculator() {
           </TooltipProvider>
         </div>
 
-        <div className="border rounded-lg p-4 bg-background">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Entered Numbers:</h3>
-            <div className="flex space-x-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={sortAscending} size="sm" variant="outline">
-                      <ArrowUp className="h-4 w-4" />
-                      <span className="sr-only">Sort Ascending</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Sort Ascending</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={sortDescending}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                      <span className="sr-only">Sort Descending</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Sort Descending</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={resetOrder} size="sm" variant="outline">
-                      <RotateCcw className="h-4 w-4" />
-                      <span className="sr-only">Reset Order</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Reset to Original Order</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={clearAllValues}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Clear All</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Clear All Values</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+        {mounted && (
+          <div className="border rounded-lg p-4 bg-background">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Entered Numbers:</h3>
+              <div className="flex space-x-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={sortAscending}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                        <span className="sr-only">Sort Ascending</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Sort Ascending</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={sortDescending}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                        <span className="sr-only">Sort Descending</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Sort Descending</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button onClick={resetOrder} size="sm" variant="outline">
+                        <RotateCcw className="h-4 w-4" />
+                        <span className="sr-only">Reset Order</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reset to Original Order</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={clearAllValues}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Clear All</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Clear All Values</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
-          </div>
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="numbers">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
-                >
-                  {numbers.map((num, index) => (
-                    <Draggable
-                      key={index}
-                      draggableId={`number-${index}`}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className="flex items-center justify-between bg-card hover:bg-accent transition-colors rounded-md px-3 py-2 border"
-                        >
-                          <span className="font-medium">{num}</span>
-                          <div className="flex space-x-1">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 hover:bg-accent"
-                                  onClick={() => {
-                                    setEditingIndex(index);
-                                    setEditingValue(num.toString());
-                                  }}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                  <span className="sr-only">Edit</span>
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Edit Number</DialogTitle>
-                                </DialogHeader>
-                                <div className="grid gap-4 py-4">
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label
-                                      htmlFor="edit-number"
-                                      className="text-right"
-                                    >
-                                      Number
-                                    </Label>
-                                    <Input
-                                      id="edit-number"
-                                      type="number"
-                                      value={editingValue}
-                                      onChange={(e) =>
-                                        setEditingValue(e.target.value)
-                                      }
-                                      className="col-span-3"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="flex justify-end">
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="numbers">
+                {(provided) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+                  >
+                    {numbers.map((num, index) => (
+                      <Draggable
+                        key={index}
+                        draggableId={`number-${index}`}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="flex items-center justify-between bg-card hover:bg-accent transition-colors rounded-md px-3 py-2 border"
+                          >
+                            <span className="font-medium">{num}</span>
+                            <div className="flex space-x-1">
+                              <Dialog>
+                                <DialogTrigger asChild>
                                   <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-accent"
                                     onClick={() => {
-                                      const newValue = parseFloat(editingValue);
-                                      if (!isNaN(newValue)) {
-                                        editNumber(index, newValue);
-                                      }
+                                      setEditingIndex(index);
+                                      setEditingValue(num.toString());
                                     }}
                                   >
-                                    Save
+                                    <Edit className="h-3 w-3" />
+                                    <span className="sr-only">Edit</span>
                                   </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 hover:bg-accent"
-                              onClick={() => deleteNumber(index)}
-                            >
-                              <X className="h-3 w-3" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Number</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                      <Label
+                                        htmlFor="edit-number"
+                                        className="text-right"
+                                      >
+                                        Number
+                                      </Label>
+                                      <Input
+                                        id="edit-number"
+                                        type="number"
+                                        value={editingValue}
+                                        onChange={(e) =>
+                                          setEditingValue(e.target.value)
+                                        }
+                                        className="col-span-3"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <Button
+                                      onClick={() => {
+                                        const newValue =
+                                          parseFloat(editingValue);
+                                        if (!isNaN(newValue)) {
+                                          editNumber(index, newValue);
+                                        }
+                                      }}
+                                    >
+                                      Save
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 hover:bg-accent"
+                                onClick={() => deleteNumber(index)}
+                              >
+                                <X className="h-3 w-3" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          </div>
+        )}
 
         <TooltipProvider>
           <Tooltip>
