@@ -19,6 +19,10 @@ import {
 import {
   Bar,
   BarChart,
+  LineChart,
+  ScatterChart,
+  Line,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -36,27 +40,22 @@ import {
   Upload,
   Download,
   BarChart as BarChartIcon,
-  LineChart,
+  LineChart as LineChartIcon,
+  ScatterChart as ScatterChartIcon,
   ZoomIn,
   ZoomOut,
   Edit,
   Moon,
   Sun,
-  GripVertical,
   ArrowUp,
   ArrowDown,
   RotateCcw,
   Trash2,
+  Settings,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "react-beautiful-dnd";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +65,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "next-themes";
+import { Switch } from "@/components/ui/switch";
 
 type DataPoint = {
   index: number;
@@ -76,6 +76,14 @@ type HistogramBin = {
   binStart: number;
   binEnd: number;
   frequency: number;
+};
+
+type AxisConfig = {
+  name: string;
+  nameRotation: number;
+  tickRotation: number;
+  showGrid: boolean;
+  tickCount: number;
 };
 
 export default function StandardDeviationCalculator() {
@@ -93,6 +101,20 @@ export default function StandardDeviationCalculator() {
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
+  const [xAxisConfig, setXAxisConfig] = useState<AxisConfig>({
+    name: "Index",
+    nameRotation: 0,
+    tickRotation: 0,
+    showGrid: true,
+    tickCount: 5,
+  });
+  const [yAxisConfig, setYAxisConfig] = useState<AxisConfig>({
+    name: "Value",
+    nameRotation: -90,
+    tickRotation: 0,
+    showGrid: true,
+    tickCount: 5,
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setTheme, theme } = useTheme();
@@ -310,19 +332,6 @@ export default function StandardDeviationCalculator() {
     return [0, maxValue * (200 / zoomLevel)];
   };
 
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-
-    const newNumbers = Array.from(numbers);
-    const [reorderedItem] = newNumbers.splice(result.source.index, 1);
-    newNumbers.splice(result.destination.index, 0, reorderedItem);
-
-    setNumbers(newNumbers);
-    setOriginalNumbers(newNumbers);
-    updateChartData(newNumbers);
-    resetResults();
-  };
-
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
   };
@@ -453,7 +462,7 @@ export default function StandardDeviationCalculator() {
           <div className="border rounded-lg p-4 bg-background">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Entered Numbers:</h3>
-              <div className="flex space-x-2">
+              <div className="flex  space-x-2">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -520,101 +529,74 @@ export default function StandardDeviationCalculator() {
                 </TooltipProvider>
               </div>
             </div>
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="numbers">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
-                  >
-                    {numbers.map((num, index) => (
-                      <Draggable
-                        key={index}
-                        draggableId={`number-${index}`}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className="flex items-center justify-between bg-card hover:bg-accent transition-colors rounded-md px-3 py-2 border"
-                          >
-                            <span className="font-medium">{num}</span>
-                            <div className="flex space-x-1">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 hover:bg-accent"
-                                    onClick={() => {
-                                      setEditingIndex(index);
-                                      setEditingValue(num.toString());
-                                    }}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                    <span className="sr-only">Edit</span>
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Edit Number</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="grid gap-4 py-4">
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <Label
-                                        htmlFor="edit-number"
-                                        className="text-right"
-                                      >
-                                        Number
-                                      </Label>
-                                      <Input
-                                        id="edit-number"
-                                        type="number"
-                                        value={editingValue}
-                                        onChange={(e) =>
-                                          setEditingValue(e.target.value)
-                                        }
-                                        className="col-span-3"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-end">
-                                    <Button
-                                      onClick={() => {
-                                        const newValue =
-                                          parseFloat(editingValue);
-                                        if (!isNaN(newValue)) {
-                                          editNumber(index, newValue);
-                                        }
-                                      }}
-                                    >
-                                      Save
-                                    </Button>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 hover:bg-accent"
-                                onClick={() => deleteNumber(index)}
-                              >
-                                <X className="h-3 w-3" />
-                                <span className="sr-only">Delete</span>
-                              </Button>
-                            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {numbers.map((num, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-card hover:bg-accent transition-colors rounded-md px-3 py-2 border"
+                >
+                  <span className="font-medium">{num}</span>
+                  <div className="flex space-x-1">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:bg-accent"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditingValue(num.toString());
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit Number</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-number" className="text-right">
+                              Number
+                            </Label>
+                            <Input
+                              id="edit-number"
+                              type="number"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              className="col-span-3"
+                            />
                           </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() => {
+                              const newValue = parseFloat(editingValue);
+                              if (!isNaN(newValue)) {
+                                editNumber(index, newValue);
+                              }
+                            }}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-accent"
+                      onClick={() => deleteNumber(index)}
+                    >
+                      <X className="h-3 w-3" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
                   </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -678,17 +660,201 @@ export default function StandardDeviationCalculator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-background">
+          <TabsList className="grid w-full grid-cols-4 bg-background">
             <TabsTrigger value="bar">
               <BarChartIcon className="mr-2 h-4 w-4" />
               Bar Chart
             </TabsTrigger>
+            <TabsTrigger value="line">
+              <LineChartIcon className="mr-2 h-4 w-4" />
+              Line Chart
+            </TabsTrigger>
+            <TabsTrigger value="scatter">
+              <ScatterChartIcon className="mr-2 h-4 w-4" />
+              Scatter Plot
+            </TabsTrigger>
             <TabsTrigger value="histogram">
-              <LineChart className="mr-2 h-4 w-4" />
+              <BarChartIcon className="mr-2 h-4 w-4" />
               Histogram
             </TabsTrigger>
           </TabsList>
           <TabsContent value="bar">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold">Bar Chart</h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Customize Axes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Customize Chart Axes</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <h4 className="font-semibold">X-Axis</h4>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-name">Name</Label>
+                        <Input
+                          id="x-axis-name"
+                          value={xAxisConfig.name}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              name: e.target.value,
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-name-rotation">
+                          Name Rotation
+                        </Label>
+                        <Input
+                          id="x-axis-name-rotation"
+                          type="number"
+                          value={xAxisConfig.nameRotation}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              nameRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-tick-rotation">
+                          Tick Rotation
+                        </Label>
+                        <Input
+                          id="x-axis-tick-rotation"
+                          type="number"
+                          value={xAxisConfig.tickRotation}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              tickRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="x-axis-grid"
+                          checked={xAxisConfig.showGrid}
+                          onCheckedChange={(checked) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              showGrid: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="x-axis-grid">Show Grid</Label>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-tick-count">Tick Count</Label>
+                        <Input
+                          id="x-axis-tick-count"
+                          type="number"
+                          value={xAxisConfig.tickCount}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              tickCount: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <h4 className="font-semibold">Y-Axis</h4>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-name">Name</Label>
+                        <Input
+                          id="y-axis-name"
+                          value={yAxisConfig.name}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              name: e.target.value,
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-name-rotation">
+                          Name Rotation
+                        </Label>
+                        <Input
+                          id="y-axis-name-rotation"
+                          type="number"
+                          value={yAxisConfig.nameRotation}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              nameRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-tick-rotation">
+                          Tick Rotation
+                        </Label>
+                        <Input
+                          id="y-axis-tick-rotation"
+                          type="number"
+                          value={yAxisConfig.tickRotation}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              tickRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="y-axis-grid"
+                          checked={yAxisConfig.showGrid}
+                          onCheckedChange={(checked) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              showGrid: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="y-axis-grid">Show Grid</Label>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-tick-count">Tick Count</Label>
+                        <Input
+                          id="y-axis-tick-count"
+                          type="number"
+                          value={yAxisConfig.tickCount}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              tickCount: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <ChartContainer
               config={{
                 value: {
@@ -703,9 +869,32 @@ export default function StandardDeviationCalculator() {
                   data={chartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="index" />
-                  <YAxis domain={getYAxisDomain(chartData, "value")} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={xAxisConfig.showGrid}
+                    horizontal={yAxisConfig.showGrid}
+                  />
+                  <XAxis
+                    dataKey="index"
+                    label={{
+                      value: xAxisConfig.name,
+                      position: "insideBottom",
+                      offset: -5,
+                      angle: xAxisConfig.nameRotation,
+                    }}
+                    tick={{ angle: xAxisConfig.tickRotation }}
+                    tickCount={xAxisConfig.tickCount}
+                  />
+                  <YAxis
+                    label={{
+                      value: yAxisConfig.name,
+                      angle: yAxisConfig.nameRotation,
+                      position: "insideLeft",
+                    }}
+                    tick={{ angle: yAxisConfig.tickRotation }}
+                    tickCount={yAxisConfig.tickCount}
+                    domain={getYAxisDomain(chartData, "value")}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-value)" />
                   {mean !== null && (
@@ -727,7 +916,354 @@ export default function StandardDeviationCalculator() {
               </ResponsiveContainer>
             </ChartContainer>
           </TabsContent>
+          <TabsContent value="line">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold">Line Chart</h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Customize Axes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Customize Chart Axes</DialogTitle>
+                  </DialogHeader>
+                  {/* Add axis customization options similar to the bar chart */}
+                </DialogContent>
+              </Dialog>
+            </div>
+            <ChartContainer
+              config={{
+                value: {
+                  label: "Value",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] mt-6"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={xAxisConfig.showGrid}
+                    horizontal={yAxisConfig.showGrid}
+                  />
+                  <XAxis
+                    dataKey="index"
+                    label={{
+                      value: xAxisConfig.name,
+                      position: "insideBottom",
+                      offset: -5,
+                      angle: xAxisConfig.nameRotation,
+                    }}
+                    tick={{ angle: xAxisConfig.tickRotation }}
+                    tickCount={xAxisConfig.tickCount}
+                  />
+                  <YAxis
+                    label={{
+                      value: yAxisConfig.name,
+                      angle: yAxisConfig.nameRotation,
+                      position: "insideLeft",
+                    }}
+                    tick={{ angle: yAxisConfig.tickRotation }}
+                    tickCount={yAxisConfig.tickCount}
+                    domain={getYAxisDomain(chartData, "value")}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--color-value)"
+                  />
+                  {mean !== null && (
+                    <ReferenceLine
+                      y={mean}
+                      stroke="red"
+                      strokeDasharray="3 3"
+                    />
+                  )}
+                  {result !== null && mean !== null && (
+                    <ReferenceArea
+                      y1={mean - result}
+                      y2={mean + result}
+                      fill="yellow"
+                      fillOpacity={0.2}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </TabsContent>
+          <TabsContent value="scatter">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold">Scatter Plot</h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Customize Axes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Customize Chart Axes</DialogTitle>
+                  </DialogHeader>
+                  {/* Add axis customization options similar to the bar chart */}
+                </DialogContent>
+              </Dialog>
+            </div>
+            <ChartContainer
+              config={{
+                value: {
+                  label: "Value",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px] mt-6"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={xAxisConfig.showGrid}
+                    horizontal={yAxisConfig.showGrid}
+                  />
+                  <XAxis
+                    dataKey="index"
+                    name="Index"
+                    label={{
+                      value: xAxisConfig.name,
+                      position: "insideBottom",
+                      offset: -5,
+                      angle: xAxisConfig.nameRotation,
+                    }}
+                    tick={{ angle: xAxisConfig.tickRotation }}
+                    tickCount={xAxisConfig.tickCount}
+                  />
+                  <YAxis
+                    dataKey="value"
+                    name="Value"
+                    label={{
+                      value: yAxisConfig.name,
+                      angle: yAxisConfig.nameRotation,
+                      position: "insideLeft",
+                    }}
+                    tick={{ angle: yAxisConfig.tickRotation }}
+                    tickCount={yAxisConfig.tickCount}
+                    domain={getYAxisDomain(chartData, "value")}
+                  />
+                  <ChartTooltip
+                    cursor={{ strokeDasharray: "3 3" }}
+                    content={<ChartTooltipContent />}
+                  />
+                  <Scatter data={chartData} fill="var(--color-value)" />
+                  {mean !== null && (
+                    <ReferenceLine
+                      y={mean}
+                      stroke="red"
+                      strokeDasharray="3 3"
+                    />
+                  )}
+                  {result !== null && mean !== null && (
+                    <ReferenceArea
+                      y1={mean - result}
+                      y2={mean + result}
+                      fill="yellow"
+                      fillOpacity={0.2}
+                    />
+                  )}
+                </ScatterChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </TabsContent>
           <TabsContent value="histogram">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold">Histogram</h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Customize Axes
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Customize Histogram Axes</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <h4 className="font-semibold">X-Axis</h4>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-name-hist">Name</Label>
+                        <Input
+                          id="x-axis-name-hist"
+                          value={xAxisConfig.name}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              name: e.target.value,
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-name-rotation-hist">
+                          Name Rotation
+                        </Label>
+                        <Input
+                          id="x-axis-name-rotation-hist"
+                          type="number"
+                          value={xAxisConfig.nameRotation}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              nameRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-tick-rotation-hist">
+                          Tick Rotation
+                        </Label>
+                        <Input
+                          id="x-axis-tick-rotation-hist"
+                          type="number"
+                          value={xAxisConfig.tickRotation}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              tickRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="x-axis-grid-hist"
+                          checked={xAxisConfig.showGrid}
+                          onCheckedChange={(checked) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              showGrid: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="x-axis-grid-hist">Show Grid</Label>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="x-axis-tick-count-hist">
+                          Tick Count
+                        </Label>
+                        <Input
+                          id="x-axis-tick-count-hist"
+                          type="number"
+                          value={xAxisConfig.tickCount}
+                          onChange={(e) =>
+                            setXAxisConfig({
+                              ...xAxisConfig,
+                              tickCount: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <h4 className="font-semibold">Y-Axis</h4>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-name-hist">Name</Label>
+                        <Input
+                          id="y-axis-name-hist"
+                          value={yAxisConfig.name}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              name: e.target.value,
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-name-rotation-hist">
+                          Name Rotation
+                        </Label>
+                        <Input
+                          id="y-axis-name-rotation-hist"
+                          type="number"
+                          value={yAxisConfig.nameRotation}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              nameRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-tick-rotation-hist">
+                          Tick Rotation
+                        </Label>
+                        <Input
+                          id="y-axis-tick-rotation-hist"
+                          type="number"
+                          value={yAxisConfig.tickRotation}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              tickRotation: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="y-axis-grid-hist"
+                          checked={yAxisConfig.showGrid}
+                          onCheckedChange={(checked) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              showGrid: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="y-axis-grid-hist">Show Grid</Label>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="y-axis-tick-count-hist">
+                          Tick Count
+                        </Label>
+                        <Input
+                          id="y-axis-tick-count-hist"
+                          type="number"
+                          value={yAxisConfig.tickCount}
+                          onChange={(e) =>
+                            setYAxisConfig({
+                              ...yAxisConfig,
+                              tickCount: parseInt(e.target.value),
+                            })
+                          }
+                          className="col-span-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <ChartContainer
               config={{
                 frequency: {
@@ -742,22 +1278,31 @@ export default function StandardDeviationCalculator() {
                   data={histogramData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={xAxisConfig.showGrid}
+                    horizontal={yAxisConfig.showGrid}
+                  />
                   <XAxis
                     dataKey="binStart"
                     tickFormatter={(value) => value.toFixed(2)}
                     label={{
-                      value: "Value",
+                      value: xAxisConfig.name,
                       position: "insideBottom",
                       offset: -5,
+                      angle: xAxisConfig.nameRotation,
                     }}
+                    tick={{ angle: xAxisConfig.tickRotation }}
+                    tickCount={xAxisConfig.tickCount}
                   />
                   <YAxis
                     label={{
-                      value: "Frequency",
-                      angle: -90,
+                      value: yAxisConfig.name,
+                      angle: yAxisConfig.nameRotation,
                       position: "insideLeft",
                     }}
+                    tick={{ angle: yAxisConfig.tickRotation }}
+                    tickCount={yAxisConfig.tickCount}
                     domain={getYAxisDomain(histogramData, "frequency")}
                   />
                   <ChartTooltip
